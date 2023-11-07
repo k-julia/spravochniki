@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Справочники</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        select {
+            width: 200px;
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        select {
+            cursor: pointer;
+        }
+
+        button {
+            background-color: #ab1638;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #tableContainer {
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h3>Крапивина Юлия Игоревна, 4 курс, 4 группа, 2023 год</h3>
+    <label for="selectDictionary">Выберите справочник:</label>
+    <select id="selectDictionary">
+        <option value="" selected disabled></option>
+        <option value="employee">Employee</option>
+        <option value="project">Project</option>
+    </select>
+
+    <div id="tableContainer">
+        <table id="dataTable"></table>
+    </div>
+
+    <div id="createFormContainer">
+        <form id="createForm"></form>
+    </div>
+</div>
+
+<script>
+    const dictionarySelect = document.getElementById('selectDictionary');
+    const dataTable = document.getElementById('dataTable');
+    const createForm = document.getElementById('createForm');
+
+    dictionarySelect.addEventListener('change', () => {
+        dataTable.innerHTML = '';
+        const selectedDictionary = dictionarySelect.value;
+
+        fetch(`/${selectedDictionary}`)
+            .then(response => response.json())
+            .then(data => {
+                renderTable(data);
+            });
+
+        if (selectedDictionary === 'employee') {
+            fetch('/project')
+                .then(response => response.json())
+                .then(projects => {
+                    const formGroupDiv = document.createElement('div');
+                    formGroupDiv.className = 'form-group';
+
+                    const projectNameLabel = document.createElement('label');
+                    projectNameLabel.textContent = 'Название проекта:';
+                    projectNameLabel.for = 'projectName';
+
+                    const projectNameDropdown = document.createElement('select');
+                    projectNameDropdown.id = 'projectName';
+                    projectNameDropdown.name = 'projectName';
+                    projectNameDropdown.required = true;
+
+                    const option = document.createElement('option');
+                    option.value = "";
+                    option.selected = true;
+                    option.disabled = true;
+                    projectNameDropdown.appendChild(option);
+                    projects.forEach(project => {
+                        const option = document.createElement('option');
+                        option.dataset.projectId = project.id;
+                        option.value = project.projectName;
+                        option.textContent = project.projectName;
+                        projectNameDropdown.appendChild(option);
+                    });
+
+                    formGroupDiv.appendChild(projectNameLabel);
+                    formGroupDiv.appendChild(projectNameDropdown);
+
+            createForm.innerHTML =
+            `<h3>Добавить новую запись:</h3>
+             <div class="form-group">
+                <label for="name">Имя:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="position">Должность:</label>
+                <input type="text" id="position" name="position" required>
+            </div>`;
+            createForm.appendChild(formGroupDiv);
+            createForm.innerHTML +=
+            `<div class="form-group">
+                <label for="hiringTime">Дата приема на работу:</label>
+                <input type="date" id="hiringTime" name="hiringTime" required>
+            </div>
+            <div class="form-group">
+                <label for="salary">Зарплата:</label>
+                <input type="number" id="salary" name="salary" required>
+            </div>
+            <button type="submit">Добавить</button>`;
+            });
+            createForm.style.display = 'block';
+        } else if (selectedDictionary === 'project') {
+            createForm.innerHTML =
+            `<h3>Добавить новую запись:</h3>
+            <div class="form-group">
+                <label for="projectName">Название проекта:</label>
+                <input type="text" id="projectName" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="startTime">Дата начала:</label>
+                <input type="date" id="startTime" name="startTime" required>
+            </div>
+            <div class="form-group">
+                <label for="budget">Бюджет:</label>
+                <input type="number" id="budget" name="budget" required>
+            </div>
+            <button type="submit">Добавить</button>`;
+            createForm.style.display = 'block';
+        } else {
+            createForm.style.display = 'none';
+        }
+    });
+
+    createForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const selectedDictionary = dictionarySelect.value;
+
+        const formData = new FormData(createForm);
+        const newRecordData = {};
+
+        formData.forEach((value, key) => {
+            newRecordData[key] = value;
+        });
+
+        const projectNameDropdown = document.getElementById('projectName');
+        const selectedProjectOption = projectNameDropdown.options[projectNameDropdown.selectedIndex];
+        newRecordData['projectId'] = selectedProjectOption.dataset.projectId;
+
+        fetch(`/${selectedDictionary}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(newRecordData)
+        })
+            .then(response => {
+                if (response.ok) {
+                    return fetch(`/${selectedDictionary}`);
+                }
+            })
+            .then(response => response.json())
+            .then(updatedData => {
+                dataTable.innerHTML = '';
+                renderTable(updatedData);
+                createForm.reset();
+            })
+    });
+
+    let currentSortField = null;
+    let currentSortDirection = 'ASC';
+
+    function renderTable(data) {
+        const headers = Object.keys(data[0]);
+        const headerRow = document.createElement('tr');
+        const selectedDictionary = dictionarySelect.value;
+
+        headers.forEach(header => {
+            if (header !== 'id' && header !== 'projectId') {
+                let columnHeader;
+                switch (header) {
+                    case 'name':
+                        columnHeader = 'Имя';
+                        break;
+                    case 'projectName':
+                        columnHeader = 'Название проекта';
+                        break;
+                    case 'position':
+                        columnHeader = 'Должность';
+                        break;
+                    case 'hiringTime':
+                        columnHeader = 'Дата приема на работу';
+                        break;
+                    case 'salary':
+                        columnHeader = 'Зарплата';
+                        break;
+                    case 'startTime':
+                        columnHeader = 'Дата начала';
+                        break;
+                    case 'budget':
+                        columnHeader = 'Бюджет';
+                        break;
+                    default:
+                        columnHeader = header;
+                }
+                const th = document.createElement('th');
+                th.textContent = columnHeader;
+                th.addEventListener('click', () => {
+                    if (currentSortField === header) {
+                        currentSortDirection = currentSortDirection === 'ASC' ? 'DESC' : 'ASC';
+                    } else {
+                        currentSortField = header;
+                        currentSortDirection = 'ASC';
+                    }
+
+                    fetch(`/${selectedDictionary}?direction=${currentSortDirection}&fieldName=${currentSortField}`)
+                        .then(response => response.json())
+                        .then(sortedData => {
+                            dataTable.innerHTML = '';
+                            renderTable(sortedData);
+                        });
+                });
+                headerRow.appendChild(th);
+            }
+        });
+
+        dataTable.appendChild(headerRow);
+
+        data.forEach(item => {
+            const row = document.createElement('tr');
+            headers.forEach(header => {
+                if (header !== 'id' && header !== 'projectId') {
+                    const td = document.createElement('td');
+                    if (header.toLowerCase().includes('time')) {
+                        const dateInput = document.createElement('input');
+                        dateInput.type = 'date';
+                        dateInput.value = item[header];
+                        dateInput.addEventListener('change', (event) => {
+                            item[header] = event.target.value;
+                            updateRecord(item);
+                        });
+
+                        td.appendChild(dateInput);
+                    } else {
+                        const input = document.createElement('div');
+                        if (header === 'projectName' && selectedDictionary === 'employee') {
+                            const selectProject = document.createElement('select');
+                            fetch('/project')
+                                .then(response => response.json())
+                                .then(projects => {
+                                    projects.forEach(project => {
+                                        const option = document.createElement('option');
+                                        option.dataset.projectId = project.id
+                                        option.value = project.projectName;
+                                        option.textContent = project.projectName;
+                                        if (project.id === item['projectId']) {
+                                            option.selected = true;
+                                        }
+                                        selectProject.appendChild(option);
+                                    });
+                                });
+
+                            selectProject.addEventListener('change', () => {
+                                const selectedProjectName = selectProject.value;
+                                const selectedProjectId = selectProject.options[selectProject.selectedIndex].dataset.projectId;
+                                item['projectName'] = selectedProjectName;
+                                item['projectId'] = selectedProjectId
+                                updateRecord(item);
+                            });
+
+                            input.appendChild(selectProject);
+                        } else {
+                            input.textContent = item[header];
+                            input.contentEditable = 'true';
+                            input.addEventListener('blur', (event) => {
+                                item[header] = event.target.textContent;
+                                updateRecord(item);
+                            });
+                        }
+                        td.appendChild(input);
+                    }
+                    row.appendChild(td);
+                }
+            });
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Удалить';
+            deleteButton.addEventListener('click', () => deleteRecord(item));
+
+            row.appendChild(deleteButton);
+
+            dataTable.appendChild(row);
+        });
+    }
+
+
+    function updateRecord(record) {
+        const selectedDictionary = dictionarySelect.value;
+        fetch(`/${selectedDictionary}/${record.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(record)
+        })
+            .then(response => {
+                if (response.ok) {
+                    return fetch(`/${selectedDictionary}`);
+                }
+            })
+            .then(response => response.json())
+            .then(updatedData => {
+                dataTable.innerHTML = '';
+                renderTable(updatedData);
+            })
+    }
+
+    function deleteRecord(record) {
+        const selectedDictionary = dictionarySelect.value;
+        fetch(`/${selectedDictionary}/${record.id}`, {
+            method: 'DELETE'
+        })
+            .then(response => {
+                if (response.ok) {
+                    return fetch(`/${selectedDictionary}`);
+                }
+            })
+            .then(response => response.json())
+            .then(updatedData => {
+                dataTable.innerHTML = '';
+                renderTable(updatedData);
+            })
+    }
+</script>
+</body>
+
+</html>
